@@ -1,0 +1,591 @@
+recommend.js
+Page({
+  data: {
+    // 新增：当前日期和星期信息
+    currentDate: '',
+    currentWeek: '',
+    currentTime: '',
+    
+    // 新增：随机鼓励语
+    encouragements: [
+      "💪 坚持就是胜利，今天也要加油学习！",
+      "🌟 每一次努力，都在为未来铺路！",
+      "🚀 今天的汗水，明天的成就！"
+    ],
+    currentEncouragement: '',
+    
+    // 新增：学习计划根据星期变化
+    weekPlans: {
+      1: "周一适合复习数学，推荐高等数学",
+      2: "周二适合编程练习，推荐数据结构",
+      3: "周三适合英语学习，推荐英语阅读",
+      4: "周四适合复习专业课，推荐计算机组成原理",
+      5: "周五适合项目实践，推荐软件工程",
+      6: "周末适合扩展学习，推荐AI技术",
+      0: "周日适合休息整理，调整状态"
+    },
+    todayPlan: '',
+    
+    // 原有数据
+    studyPlan: {
+      title: "高等数学复习",
+      desc: "每天下午15:00-17:00是您的空闲时间，推荐复习极限与微积分",
+      duration: "推荐时长：2小时",
+      status: "今日推荐"
+    },
+    
+    partner: {
+      name: "李玥",
+      major: "计算机科学专业",
+      matchRate: "85%"
+    },
+    
+    activity: {
+      title: "AI技术研讨会",
+      time: "1月9日（周五）19:00",
+      location: "报告厅",
+      desc: "时长2小时，与您无课程冲突"
+    }
+  },
+
+  onLoad() {
+    // 页面加载时初始化数据
+    this.initPageData();
+  },
+
+  onShow() {
+    // 页面显示时更新数据
+    this.initPageData();
+  },
+
+  // 初始化页面数据
+  initPageData() {
+    // 获取当前日期和时间
+    const now = new Date();
+    
+    // 格式化日期：2023年11月20日
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    const formattedDate = `${year}年${month}月${date}日`;
+    
+    // 获取星期几
+    const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const weekDay = now.getDay(); // 0-6
+    const weekDayStr = weekDays[weekDay];
+    
+    // 格式化时间：10:30
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const formattedTime = `${hours}:${minutes}`;
+    
+    // 随机选择鼓励语
+    const randomIndex = Math.floor(Math.random() * this.data.encouragements.length);
+    const randomEncouragement = this.data.encouragements[randomIndex];
+    
+    // 根据星期几设置学习计划
+    const todayPlan = this.data.weekPlans[weekDay] || "保持每日学习，巩固知识";
+    
+    this.setData({
+      currentDate: formattedDate,
+      currentWeek: weekDayStr,
+      currentTime: formattedTime,
+      currentEncouragement: randomEncouragement,
+      todayPlan: todayPlan
+    });
+    
+    // 更新学习计划描述
+    this.setData({
+      'studyPlan.desc': `今天是${weekDayStr}，${todayPlan}`
+    });
+  },
+
+  // ===== 点击交互功能 =====
+  
+  // 点击自习伙伴
+  onPartnerTap() {
+    wx.showModal({
+      title: '联系自习伙伴',
+      content: `是否要联系 ${this.data.partner.name} 同学？\n匹配率：${this.data.partner.matchRate}`,
+      cancelText: '再看看',
+      confirmText: '联系TA',
+      success: (res) => {
+        if (res.confirm) {
+          wx.showToast({
+            title: '已发送请求',
+            icon: 'none'
+          });
+        }
+      }
+    });
+  },
+
+  // 点击校园活动
+  onActivityTap() {
+    const activity = this.data.activity;
+    wx.showModal({
+      title: activity.title,
+      content: `📅 时间：${activity.time}\n📍 地点：${activity.location}\n⏰ ${activity.desc}`,
+      cancelText: '取消',
+      confirmText: '立即报名',
+      success: (res) => {
+        if (res.confirm) {
+          wx.showToast({
+            title: '报名成功！',
+            icon: 'success'
+          });
+          
+          // 3秒后刷新鼓励语
+          setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * this.data.encouragements.length);
+            this.setData({
+              currentEncouragement: this.data.encouragements[randomIndex]
+            });
+          }, 3000);
+        }
+      }
+    });
+  },
+
+  // 点击查看详情
+  onViewDetail() {
+    wx.showModal({
+      title: '活动详情',
+      content: 'AI技术研讨会，分享ai领域最新成果',
+      showCancel: false,
+      confirmText: '知道了'
+    });
+  },
+
+  // 刷新鼓励语
+  onRefreshEncouragement() {
+    const randomIndex = Math.floor(Math.random() * this.data.encouragements.length);
+    this.setData({
+      currentEncouragement: this.data.encouragements[randomIndex]
+    });
+    
+    wx.showToast({
+      title: '已更新鼓励语',
+      icon: 'success'
+    });
+  },
+
+  // 查看学习统计
+  onViewStats() {
+    wx.navigateTo({
+      url: '/pages/profile/profile'
+    });
+  }
+});
+
+
+
+
+
+
+
+recommend.json
+{
+  "usingComponents": {}
+}
+
+
+
+
+
+
+
+recommend.wxml
+<!-- AI推荐页面 -->
+<view class="recommend-container">
+  <!-- 页面标题和时间显示 -->
+  <view class="page-header">
+    <text class="page-title">智能推荐</text>
+    <view class="time-display">
+      <text class="date">{{currentDate}}</text>
+      <text class="week">{{currentWeek}} {{currentTime}}</text>
+    </view>
+  </view>
+
+  <!-- 随机鼓励语 -->
+  <view class="encouragement-section" bindtap="onRefreshEncouragement">
+    <text class="encouragement-text">💬 {{currentEncouragement}}</text>
+    <text class="refresh-hint">点击刷新</text>
+  </view>
+
+  <!-- 学习计划 -->
+  <view class="section">
+    <view class="section-title">
+      <text class="title-text">学习计划</text>
+      <text class="title-tag">{{studyPlan.status}}</text>
+    </view>
+    
+    <view class="plan-card">
+      <text class="plan-title">{{studyPlan.title}}</text>
+      <text class="plan-desc">{{studyPlan.desc}}</text>
+      <view class="plan-meta">
+        <text class="plan-time">{{studyPlan.duration}}</text>
+        <text class="plan-tag">今日推荐</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 自习伙伴 -->
+  <view class="section">
+    <view class="section-title">
+      <text class="title-text">自习伙伴</text>
+    </view>
+    
+    <view class="partner-card" bindtap="onPartnerTap">
+      <view class="partner-info">
+        <view class="partner-avatar">{{partner.name.charAt(0)}}</view>
+        <view class="partner-details">
+          <text class="partner-name">{{partner.name}}</text>
+          <text class="partner-major">{{partner.major}}</text>
+        </view>
+      </view>
+      <view class="partner-match">
+        <text class="match-rate">匹配率 {{partner.matchRate}}</text>
+        <text class="match-action">联系TA →</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 校园活动 -->
+  <view class="section">
+    <view class="section-title">
+      <text class="title-text">校园活动</text>
+    </view>
+    
+    <view class="activity-card">
+      <text class="activity-title" bindtap="onViewDetail">{{activity.title}}</text>
+      <view class="activity-meta">
+        <text class="activity-time">📅 {{activity.time}}</text>
+        <text class="activity-location">📍 {{activity.location}}</text>
+      </view>
+      <text class="activity-desc">{{activity.desc}}</text>
+      <view class="activity-actions">
+        <text class="action-btn view-detail" bindtap="onViewDetail">查看详情</text>
+        <text class="action-btn primary" bindtap="onActivityTap">立即报名</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 推荐依据 -->
+  <view class="recommend-reason">
+    <text class="reason-title">📊 推荐依据</text>
+    <text class="reason-text">基于您的学习习惯、课程安排和兴趣偏好进行智能推荐</text>
+    <text class="reason-subtext">当前时间：{{currentDate}} {{currentWeek}} {{currentTime}}</text>
+  </view>
+</view>
+
+
+
+
+
+
+
+
+
+recommend.wxss
+/* AI推荐页面样式 */
+.recommend-container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 页面标题和时间显示 */
+.page-header {
+  margin-bottom: 30rpx;
+  padding: 20rpx;
+  background: white;
+  border-radius: 15rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.page-title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 15rpx;
+}
+
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.date {
+  font-weight: 500;
+}
+
+.week {
+  color: #4a90e2;
+  font-weight: bold;
+}
+
+/* 鼓励语部分 */
+.encouragement-section {
+  background: linear-gradient(135deg, #ffecd2, #fcb69f);
+  border-radius: 15rpx;
+  padding: 25rpx;
+  margin-bottom: 30rpx;
+  text-align: center;
+  color: #333;
+  box-shadow: 0 4rpx 15rpx rgba(252, 182, 159, 0.3);
+}
+
+.encouragement-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.refresh-hint {
+  font-size: 22rpx;
+  color: #666;
+  display: block;
+}
+
+/* 通用样式复用任务页面的部分 */
+
+/* 计划卡片 */
+.plan-card {
+  background: linear-gradient(135deg, #4a90e2, #50c878);
+  border-radius: 15rpx;
+  padding: 30rpx;
+  color: white;
+}
+
+.plan-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 15rpx;
+}
+
+.plan-desc {
+  font-size: 26rpx;
+  line-height: 1.4;
+  display: block;
+  margin-bottom: 20rpx;
+  opacity: 0.9;
+}
+
+.plan-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.plan-time {
+  font-size: 24rpx;
+}
+
+.plan-tag {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+}
+
+/* 自习伙伴卡片 */
+.partner-card {
+  background: white;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.partner-info {
+  display: flex;
+  align-items: center;
+}
+
+.partner-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  background: #4a90e2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 32rpx;
+  font-weight: bold;
+  margin-right: 20rpx;
+}
+
+.partner-details {
+  flex: 1;
+}
+
+.partner-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.partner-major {
+  font-size: 24rpx;
+  color: #666;
+  display: block;
+}
+
+.partner-match {
+  text-align: right;
+}
+
+.match-rate {
+  font-size: 28rpx;
+  color: #4a90e2;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.match-action {
+  font-size: 24rpx;
+  color: #4a90e2;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid #4a90e2;
+  border-radius: 20rpx;
+  display: inline-block;
+}
+
+/* 活动卡片 */
+.activity-card {
+  background: white;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.activity-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 15rpx;
+}
+
+.activity-meta {
+  display: flex;
+  margin-bottom: 15rpx;
+}
+
+.activity-time {
+  font-size: 26rpx;
+  color: #666;
+  margin-right: 30rpx;
+}
+
+.activity-location {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.activity-desc {
+  font-size: 26rpx;
+  color: #50c878;
+  display: block;
+  margin-bottom: 25rpx;
+}
+
+.activity-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  padding: 15rpx 30rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 25rpx;
+  font-size: 24rpx;
+  color: #666;
+  margin-left: 20rpx;
+}
+
+.action-btn.primary {
+  background: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+/* 推荐依据 */
+.recommend-reason {
+  background: white;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  margin-top: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.reason-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 15rpx;
+}
+
+.reason-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.4;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.reason-subtext {
+  font-size: 22rpx;
+  color: #999;
+  display: block;
+}
+
+/* 快捷操作 */
+.quick-actions {
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  border-radius: 15rpx;
+  padding: 25rpx;
+  margin-top: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.action-item {
+  text-align: center;
+  flex: 1;
+  padding: 0 10rpx;
+}
+
+.action-icon {
+  font-size: 40rpx;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.action-text {
+  font-size: 22rpx;
+  color: #666;
+  display: block;
+}
+
+/* 点击效果 */
+.partner-card:active,
+.activity-title:active,
+.encouragement-section:active,
+.action-item:active {
+  opacity: 0.8;
+}
