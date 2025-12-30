@@ -1,0 +1,153 @@
+app.js
+App({
+  onLaunch() {
+    // 检查是否已初始化数据
+    this.initData();
+  },
+
+  // 初始化默认数据
+  initData() {
+    // 检查课程数据
+    let courses = wx.getStorageSync('courses');
+    if (!courses) {
+      // 默认课程数据
+      courses = {
+        mon: [
+          { id: 1, name: '高等数学', time: '08:00-09:40', location: 'A101' },
+          { id: 2, name: '英语', time: '10:00-11:40', location: 'B203' }
+        ],
+        tue: [
+          { id: 3, name: '数据结构', time: '14:00-15:40', location: 'C301' }
+        ],
+        wed: [
+          { id: 4, name: '计算机组成原理', time: '08:00-09:40', location: 'D202' }
+        ],
+        thu: [
+          { id: 5, name: '软件工程', time: '10:00-11:40', location: 'A301' },
+          { id: 6, name: '概率论', time: '14:00-15:40', location: 'B105' }
+        ],
+        fri: [
+          { id: 7, name: '人工智能', time: '08:00-09:40', location: 'E101' }
+        ],
+        sat: [],
+        sun: []
+      };
+      wx.setStorageSync('courses', courses);
+    }
+
+    // 检查任务数据
+    let tasks = wx.getStorageSync('tasks');
+    if (!tasks || tasks.length === 0) {
+      // 默认任务数据（年份改为2025年）
+      tasks = [
+        {
+          id: 1,
+          title: '高等数学作业',
+          desc: '完成第二系列练习题',
+          deadline: '2025-11-20', // 改为2025年
+          type: 'homework',
+          completed: false
+        },
+        {
+          id: 2,
+          title: '数据结构实验',
+          desc: '实现二叉树遍历算法',
+          deadline: '2025-11-22', // 改为2025年
+          type: 'experiment',
+          completed: true
+        },
+        {
+          id: 3,
+          title: '英语作文',
+          desc: '写一篇关于AI的议论文',
+          deadline: '2025-11-25', // 改为2025年
+          type: 'homework',
+          completed: false
+        }
+      ];
+      wx.setStorageSync('tasks', tasks);
+    }
+  }
+});
+
+
+
+
+
+
+app.wxss
+/**app.wxss**/
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+} 
+
+button {
+  background: initial;
+}
+
+button:focus{
+  outline: 0;
+}
+
+button::after{
+  border: none;
+}
+
+
+page {
+  background: #f6f6f6;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+
+
+
+
+
+app.json
+{
+  "pages": [
+    "pages/index/index",
+    "pages/task/task",
+    "pages/recommend/recommend",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "navigationBarTitleText": "课程通",
+    "navigationBarBackgroundColor": "#4a90e2",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f5f5",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#4a90e2",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/task/task",
+        "text": "任务"
+      },
+      {
+        "pagePath": "pages/recommend/recommend",
+        "text": "推荐"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

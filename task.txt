@@ -1,0 +1,535 @@
+task.js
+Page({
+  data: {
+    tabs: [
+      { type: 'all', text: '全部' },
+      { type: 'pending', text: '待完成' },
+      { type: 'completed', text: '已完成' },
+      { type: 'expired', text: '已过期' }
+    ],
+    activeTab: 'all',
+    tasks: [],
+    showAddTaskModal: false,
+    newTask: {
+      title: '',
+      desc: '',
+      deadline: '',
+      type: 'homework'
+    },
+    
+    // 新增：计算后的统计数据
+    pendingCount: 0,
+    completedCount: 0,
+    expiredCount: 0,
+    
+    // 新增：当前显示的任务列表
+    currentTasks: []
+  },
+
+  onLoad() {
+    this.loadTasks();
+  },
+
+  onShow() {
+    this.loadTasks();
+  },
+
+  // 从本地存储加载任务
+  loadTasks() {
+    const tasks = wx.getStorageSync('tasks') || [];
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 计算任务是否过期
+    const updatedTasks = tasks.map(task => {
+      return {
+        ...task,
+        expired: task.deadline < today && !task.completed
+      };
+    });
+    
+    // 计算各项统计数据
+    const pendingCount = updatedTasks.filter(task => !task.completed && !task.expired).length;
+    const completedCount = updatedTasks.filter(task => task.completed).length;
+    const expiredCount = updatedTasks.filter(task => task.expired).length;
+    
+    this.setData({
+      tasks: updatedTasks,
+      pendingCount: pendingCount,
+      completedCount: completedCount,
+      expiredCount: expiredCount
+    });
+    
+    // 更新当前显示的任务
+    this.updateCurrentTasks();
+  },
+
+  // 更新当前显示的任务列表
+  updateCurrentTasks() {
+    const { tasks, activeTab } = this.data;
+    let currentTasks = [];
+    
+    switch (activeTab) {
+      case 'pending':
+        currentTasks = tasks.filter(task => !task.completed && !task.expired);
+        break;
+      case 'completed':
+        currentTasks = tasks.filter(task => task.completed);
+        break;
+      case 'expired':
+        currentTasks = tasks.filter(task => task.expired);
+        break;
+      case 'all':
+      default:
+        currentTasks = tasks;
+        break;
+    }
+    
+    this.setData({
+      currentTasks: currentTasks
+    });
+  },
+
+  // 切换标签
+  switchTab(e) {
+    const type = e.currentTarget.dataset.type;
+    this.setData({
+      activeTab: type
+    }, () => {
+      // 切换标签后更新任务列表
+      this.updateCurrentTasks();
+    });
+  },
+
+  // 切换任务完成状态
+  toggleTask(e) {
+    const id = e.currentTarget.dataset.id;
+    const { tasks } = this.data;
+    
+    const updatedTasks = tasks.map(task => {
+      if (task.id === id) {
+        return {
+          ...task,
+          completed: !task.completed
+        };
+      }
+      return task;
+    });
+    
+    // 保存到本地存储
+    wx.setStorageSync('tasks', updatedTasks);
+    
+    // 重新加载数据
+    this.loadTasks();
+    
+    wx.showToast({
+      title: updatedTasks.find(t => t.id === id).completed ? '任务完成！' : '任务待完成',
+      icon: 'success'
+    });
+  },
+
+  // 显示添加任务弹窗
+  showAddTask() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const defaultDate = tomorrow.toISOString().split('T')[0];
+    
+    this.setData({
+      showAddTaskModal: true,
+      newTask: {
+        title: '',
+        desc: '',
+        deadline: defaultDate,
+        type: 'homework'
+      }
+    });
+  },
+
+  // 隐藏添加任务弹窗
+  hideAddTask() {
+    this.setData({
+      showAddTaskModal: false
+    });
+  },
+
+  // 输入任务信息
+  onTaskInput(e) {
+    const field = e.currentTarget.dataset.field;
+    const value = e.detail.value;
+    
+    this.setData({
+      [`newTask.${field}`]: value
+    });
+  },
+
+  // 选择任务类型
+  onTypeChange(e) {
+    this.setData({
+      'newTask.type': e.detail.value
+    });
+  },
+
+  // 选择截止日期
+  onDateChange(e) {
+    this.setData({
+      'newTask.deadline': e.detail.value
+    });
+  },
+
+  // 添加新任务
+  addTask() {
+    const { newTask, tasks } = this.data;
+    
+    if (!newTask.title.trim()) {
+      wx.showToast({
+        title: '请输入任务标题',
+        icon: 'none'
+      });
+      return;
+    }
+
+    const taskId = Date.now();
+    const task = {
+      id: taskId,
+      title: newTask.title,
+      desc: newTask.desc,
+      deadline: newTask.deadline,
+      type: newTask.type,
+      completed: false,
+      tag: '待完成'
+    };
+
+    const updatedTasks = [...tasks, task];
+    
+    // 保存到本地存储
+    wx.setStorageSync('tasks', updatedTasks);
+    
+    this.setData({
+      showAddTaskModal: false
+    });
+
+    // 重新加载数据
+    this.loadTasks();
+
+    wx.showToast({
+      title: '添加成功',
+      icon: 'success'
+    });
+  },
+
+  // 删除任务
+  deleteTask(e) {
+    const id = e.currentTarget.dataset.id;
+    const { tasks } = this.data;
+    
+    wx.showModal({
+      title: '删除任务',
+      content: '确定要删除这个任务吗？',
+      success: (res) => {
+        if (res.confirm) {
+          const updatedTasks = tasks.filter(task => task.id !== id);
+          
+          // 保存到本地存储
+          wx.setStorageSync('tasks', updatedTasks);
+          
+          // 重新加载数据
+          this.loadTasks();
+
+          wx.showToast({
+            title: '删除成功',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  }
+});
+
+
+
+
+
+
+
+task.json
+{
+  "usingComponents": {}
+}
+
+
+
+
+
+
+
+task.wxml
+<view class="task-container">
+  <!-- 页面标题和添加按钮 -->
+  <view class="page-header">
+    <text class="page-title">我的任务</text>
+    <text class="add-task-btn" bindtap="showAddTask">+ 添加</text>
+  </view>
+
+  <!-- 任务标签 -->
+  <view class="task-tabs">
+    <view wx:for="{{tabs}}" wx:key="type" 
+          class="tab {{activeTab === item.type ? 'active' : ''}}"
+          bindtap="switchTab" data-type="{{item.type}}">
+      {{item.text}}
+    </view>
+  </view>
+
+  <!-- 任务统计 - 使用计算好的数据 -->
+  <view class="task-stats">
+    <view class="stat-item">
+      <text class="stat-number">{{pendingCount}}</text>
+      <text class="stat-label">待完成</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-number">{{completedCount}}</text>
+      <text class="stat-label">已完成</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-number">{{expiredCount}}</text>
+      <text class="stat-label">已过期</text>
+    </view>
+  </view>
+
+  <!-- 任务列表 - 使用currentTasks -->
+  <view class="task-list">
+    <view wx:if="{{currentTasks.length === 0}}" class="no-tasks">
+      <text>暂无任务</text>
+    </view>
+    
+    <view wx:for="{{currentTasks}}" wx:key="id" class="task-item">
+      <view class="task-checkbox" bindtap="toggleTask" data-id="{{item.id}}">
+        <text class="checkbox-icon">{{item.completed ? '✓' : ''}}</text>
+      </view>
+      
+      <view class="task-content">
+        <view class="task-header">
+          <text class="task-title {{item.completed ? 'completed' : ''}} {{item.expired ? 'expired' : ''}}">
+            {{item.title}}
+          </text>
+          <text class="task-type {{item.type}}">{{item.type === 'homework' ? '作业' : '实验'}}</text>
+        </view>
+        
+        <text wx:if="{{item.desc}}" class="task-desc">{{item.desc}}</text>
+        
+        <view class="task-footer">
+          <text class="task-deadline {{item.expired ? 'expired' : ''}}">
+            截止：{{item.deadline}} {{item.expired ? '(已过期)' : ''}}
+          </text>
+          <text class="task-status {{item.completed ? 'completed' : ''}}">
+            {{item.completed ? '已完成' : item.expired ? '已过期' : '待完成'}}
+          </text>
+        </view>
+      </view>
+      
+      <view class="task-actions">
+        <text class="delete-btn" bindtap="deleteTask" data-id="{{item.id}}">删除</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 添加任务弹窗 -->
+  <view wx:if="{{showAddTaskModal}}" class="modal">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">添加新任务</text>
+        <text class="close-btn" bindtap="hideAddTask">×</text>
+      </view>
+      
+      <view class="form">
+        <!-- 任务标题 -->
+        <view class="form-item">
+          <text class="label">任务标题：</text>
+          <input placeholder="例如：高等数学作业" 
+                 value="{{newTask.title}}" 
+                 bindinput="onTaskInput" 
+                 data-field="title" />
+        </view>
+        
+        <!-- 任务描述 -->
+        <view class="form-item">
+          <text class="label">任务描述：</text>
+          <input placeholder="可选，描述任务内容" 
+                 value="{{newTask.desc}}" 
+                 bindinput="onTaskInput" 
+                 data-field="desc" />
+        </view>
+        
+        <!-- 任务类型 -->
+        <view class="form-item">
+          <text class="label">任务类型：</text>
+          <picker range="{{['作业', '实验']}}" value="{{newTask.type === 'homework' ? 0 : 1}}" 
+                  bindchange="onTypeChange">
+            <view class="picker">{{newTask.type === 'homework' ? '作业' : '实验'}}</view>
+          </picker>
+        </view>
+        
+        <!-- 截止日期 -->
+        <view class="form-item">
+          <text class="label">截止日期：</text>
+          <picker mode="date" value="{{newTask.deadline}}" bindchange="onDateChange">
+            <view class="picker">{{newTask.deadline}}</view>
+          </picker>
+        </view>
+        
+        <button class="submit-btn" bindtap="addTask">添加任务</button>
+      </view>
+    </view>
+  </view>
+</view>
+
+
+
+
+
+
+task.wxss
+/* 任务页面样式 */
+.task-container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.page-header {
+  margin-bottom: 30rpx;
+}
+
+.page-title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+/* 任务标签 */
+.task-tabs {
+  display: flex;
+  background: white;
+  border-radius: 15rpx;
+  padding: 15rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 15rpx 0;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.tab.active {
+  color: #4a90e2;
+  font-weight: bold;
+  border-bottom: 4rpx solid #4a90e2;
+}
+
+/* 区域标题 */
+.section {
+  background: white;
+  border-radius: 15rpx;
+  padding: 25rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25rpx;
+  padding-bottom: 15rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.title-text {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.title-badge {
+  background: #ff6b6b;
+  color: white;
+  font-size: 22rpx;
+  padding: 5rpx 15rpx;
+  border-radius: 20rpx;
+}
+
+/* 任务卡片 */
+.task-card {
+  padding: 25rpx;
+  margin-bottom: 20rpx;
+  border-radius: 12rpx;
+  background: #f9f9f9;
+  border-left: 6rpx solid #4a90e2;
+}
+
+.task-card.special {
+  border-left-color: #50c878;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15rpx;
+}
+
+.task-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.task-score {
+  font-size: 26rpx;
+  color: #50c878;
+  font-weight: bold;
+}
+
+.task-tag {
+  font-size: 22rpx;
+  color: #666;
+  background: #eee;
+  padding: 5rpx 15rpx;
+  border-radius: 15rpx;
+}
+
+.task-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* 统计 */
+.stats {
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #4a90e2;
+  margin-bottom: 10rpx;
+}
+
+.stat-label {
+  display: block;
+  font-size: 24rpx;
+  color: #666;
+}

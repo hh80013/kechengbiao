@@ -1,0 +1,676 @@
+Page({
+  data: {
+    weekDays: [], // 初始化为空，动态计算
+    weekDayNames: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    dayIndex: 0,
+    currentDay: '', // 当前选中的星期
+    currentCourses: [], // 当前显示的课程
+    courses: {}, // 所有课程数据
+    showAddCourseModal: false,
+    newCourse: {},
+    weekNumber: 12 // 初始值，后面会动态计算
+  },
+
+  onLoad() {
+    // 初始化日期和周数
+    this.initDates();
+    this.calculateWeekNumber();
+    
+    // 尝试从本地存储加载课程
+    const savedCourses = wx.getStorageSync('courses');
+    if (savedCourses) {
+      this.setData({
+        courses: savedCourses
+      });
+    }
+    this.updateCurrentCourses();
+  },
+
+  onShow() {
+    // 每次显示页面时更新日期和课程
+    this.initDates();
+    this.calculateWeekNumber();
+    this.updateCurrentCourses();
+  },
+
+  // 计算当前是第几周（以2025年12月23日为第17周为基准）
+  calculateWeekNumber() {
+    // 基准日期：2025年12月23日（周二）是第17周
+    const baseDate = new Date('2025-12-23');
+    const baseWeekNumber = 17;
+    
+    // 当前日期
+    const now = new Date();
+    
+    // 计算两个日期之间的天数差
+    const diffTime = Math.abs(now - baseDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 计算周数差（每7天为1周）
+    const weeksDiff = Math.floor(diffDays / 7);
+    
+    // 计算当前周数
+    let currentWeekNumber;
+    if (now < baseDate) {
+      // 如果当前日期在基准日期之前
+      currentWeekNumber = baseWeekNumber - weeksDiff;
+    } else {
+      // 如果当前日期在基准日期之后
+      currentWeekNumber = baseWeekNumber + weeksDiff;
+    }
+    
+    // 确保周数不会为0或负数
+    if (currentWeekNumber < 1) {
+      currentWeekNumber = 1;
+    }
+    
+    this.setData({
+      weekNumber: currentWeekNumber
+    });
+    
+    return currentWeekNumber;
+  },
+
+  // 初始化日期数据
+  initDates() {
+    const now = new Date();
+    
+    // 获取今天是星期几（0-6，0是周日）
+    const today = now.getDay();
+    // 转换为周一为0的索引
+    let todayIndex = today - 1;
+    if (todayIndex < 0) todayIndex = 6; // 周日
+    
+    // 计算一周的日期
+    const weekDays = [];
+    const daysOfWeek = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const dayNames = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    
+    // 获取今天的日期
+    const todayDate = new Date(now);
+    
+    // 计算本周一的日期
+    const monday = new Date(todayDate);
+    const dayOfWeek = todayDate.getDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 如果今天是周日，需要减去6天
+    monday.setDate(todayDate.getDate() - diff);
+    
+    // 生成一周的日期
+    for (let i = 0; i < 7; i++) {
+      const currentDay = new Date(monday);
+      currentDay.setDate(monday.getDate() + i);
+      
+      const month = currentDay.getMonth() + 1;
+      const date = currentDay.getDate();
+      
+      weekDays.push({
+        name: daysOfWeek[i],
+        day: dayNames[i],
+        date: `${month < 10 ? '0' + month : month}.${date < 10 ? '0' + date : date}`
+      });
+    }
+    
+    // 设置当前选中的星期为今天
+    const currentDay = dayNames[todayIndex];
+    
+    this.setData({
+      weekDays: weekDays,
+      currentDay: currentDay,
+      dayIndex: todayIndex
+    });
+  },
+
+  // 切换星期
+  switchDay(e) {
+    const day = e.currentTarget.dataset.day;
+    const index = this.data.weekDays.findIndex(item => item.day === day);
+    
+    this.setData({
+      currentDay: day,
+      dayIndex: index
+    });
+    this.updateCurrentCourses();
+  },
+
+  // 更新当前显示的课程
+  updateCurrentCourses() {
+    this.setData({
+      currentCourses: this.data.courses[this.data.currentDay] || []
+    });
+  },
+
+  // 显示添加课程弹窗
+  showAddCourse() {
+    // 找到当前星期的索引
+    const currentIndex = this.data.weekDays.findIndex(item => item.day === this.data.currentDay);
+    
+    this.setData({
+      showAddCourseModal: true,
+      dayIndex: currentIndex,
+      newCourse: {
+        day: this.data.currentDay,
+        name: '',
+        time: '08:00-09:40',
+        location: ''
+      }
+    });
+  },
+
+  // 隐藏添加课程弹窗
+  hideAddCourse() {
+    this.setData({
+      showAddCourseModal: false
+    });
+  },
+
+  // 选择星期改变
+  onDayChange(e) {
+    const index = e.detail.value;
+    const selectedDay = this.data.weekDays[index].day;
+    
+    this.setData({
+      dayIndex: index,
+      'newCourse.day': selectedDay
+    });
+  },
+
+  // 输入课程信息
+  onCourseInput(e) {
+    const field = e.currentTarget.dataset.field;
+    const value = e.detail.value;
+    
+    this.setData({
+      [`newCourse.${field}`]: value
+    });
+  },
+
+  // 添加新课程
+  addCourse() {
+    const { newCourse, courses } = this.data;
+    
+    if (!newCourse.name.trim()) {
+      wx.showToast({
+        title: '请输入课程名称',
+        icon: 'none'
+      });
+      return;
+    }
+
+    // 生成课程ID
+    const courseId = Date.now();
+    const course = {
+      id: courseId,
+      name: newCourse.name,
+      time: newCourse.time,
+      location: newCourse.location || '待定'
+    };
+
+    // 添加到对应星期的课程列表
+    const day = newCourse.day;
+    const updatedCourses = {
+      ...courses,
+      [day]: [...(courses[day] || []), course]
+    };
+
+    // 更新数据
+    this.setData({
+      courses: updatedCourses,
+      showAddCourseModal: false
+    });
+
+    // 保存到本地存储
+    wx.setStorageSync('courses', updatedCourses);
+    
+    // 更新显示
+    this.updateCurrentCourses();
+
+    wx.showToast({
+      title: '添加成功',
+      icon: 'success'
+    });
+  },
+
+  // 删除课程
+  deleteCourse(e) {
+    const courseId = e.currentTarget.dataset.id;
+    const day = this.data.currentDay;
+    const { courses } = this.data;
+    
+    wx.showModal({
+      title: '删除课程',
+      content: '确定要删除这门课程吗？',
+      success: (res) => {
+        if (res.confirm) {
+          const updatedCourses = {
+            ...courses,
+            [day]: courses[day].filter(course => course.id !== courseId)
+          };
+
+          this.setData({
+            courses: updatedCourses
+          });
+
+          // 保存到本地存储
+          wx.setStorageSync('courses', updatedCourses);
+          
+          // 更新显示
+          this.updateCurrentCourses();
+
+          wx.showToast({
+            title: '删除成功',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  // 跳转到任务页面
+  goToTask() {
+    wx.switchTab({
+      url: '/pages/task/task'
+    });
+  },
+
+  // 跳转到AI推荐页面  
+  goToRecommend() {
+    wx.switchTab({
+      url: '/pages/recommend/recommend'
+    });
+  }
+});
+
+
+
+
+index.json
+{
+  "usingComponents": {}
+}
+
+
+
+
+
+
+
+
+index.wxml
+<view class="container">
+  <!-- 顶部标题 -->
+  <view class="header">
+    <text class="title">课程通</text>
+    <text class="subtitle">第{{weekNumber}}周</text>
+  </view>
+  
+  <!-- 周视图 -->
+  <view class="week-tabs">
+    <view wx:for="{{weekDays}}" wx:key="day" 
+          class="tab {{currentDay === item.day ? 'active' : ''}}"
+          bindtap="switchDay" data-day="{{item.day}}">
+      <text class="tab-day">{{item.name}}</text>
+      <text class="tab-date">{{item.date}}</text>
+    </view>
+  </view>
+  
+  <!-- 课程列表 -->
+  <view class="course-list">
+    <view wx:if="{{currentCourses.length === 0}}" class="no-course">
+      <text>今天没有课程</text>
+    </view>
+    
+    <view wx:for="{{currentCourses}}" wx:key="id" class="course-item">
+      <view class="course-info">
+        <text class="time">{{item.time}}</text>
+        <text class="name">{{item.name}}</text>
+        <text class="location">{{item.location}}</text>
+      </view>
+      <view class="course-actions">
+        <text class="delete-btn" bindtap="deleteCourse" data-id="{{item.id}}">删除</text>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 添加课程按钮 -->
+  <view class="add-course-btn" bindtap="showAddCourse">
+    <text>➕ 添加课程</text>
+  </view>
+  
+  <!-- 快捷入口 -->
+  <view class="quick-actions">
+    <view class="action" bindtap="goToTask">
+      <text class="icon">📝</text>
+      <text class="text">今日任务</text>
+    </view>
+    <view class="action" bindtap="goToRecommend">
+      <text class="icon">🤖</text>
+      <text class="text">AI推荐</text>
+    </view>
+  </view>
+  
+  <!-- 添加课程弹窗 -->
+  <view wx:if="{{showAddCourseModal}}" class="modal">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">添加课程</text>
+        <text class="close-btn" bindtap="hideAddCourse">×</text>
+      </view>
+      
+      <!-- 添加这个form标签 -->
+      <view class="form">
+        <!-- 选择星期 -->
+        <view class="form-item">
+          <text class="label">星期：</text>
+          <picker range="{{weekDayNames}}" value="{{dayIndex}}" bindchange="onDayChange">
+            <view class="picker">{{weekDays[dayIndex].name}}</view>
+          </picker>
+        </view>
+        
+        <!-- 课程名称 -->
+        <view class="form-item">
+          <text class="label">课程名称：</text>
+          <input placeholder="请输入课程名称" 
+                 value="{{newCourse.name}}" 
+                 bindinput="onCourseInput" 
+                 data-field="name" />
+        </view>
+        
+        <!-- 上课时间 -->
+        <view class="form-item">
+          <text class="label">上课时间：</text>
+          <input placeholder="例如：08:00-09:40" 
+                 value="{{newCourse.time}}" 
+                 bindinput="onCourseInput" 
+                 data-field="time" />
+        </view>
+        
+        <!-- 上课地点 -->
+        <view class="form-item">
+          <text class="label">上课地点：</text>
+          <input placeholder="例如：A101" 
+                 value="{{newCourse.location}}" 
+                 bindinput="onCourseInput" 
+                 data-field="location" />
+        </view>
+        
+        <button class="submit-btn" bindtap="addCourse">添加课程</button>
+      </view> <!-- 这个form标签是新增的 -->
+    </view>
+  </view>
+</view>
+
+
+
+
+
+
+
+
+index.wxss
+/* 首页样式 - 优化版 */
+.container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 顶部标题 */
+.header {
+  text-align: center;
+  margin-bottom: 30rpx;
+  padding: 25rpx 20rpx;
+  background: linear-gradient(135deg, #4a90e2, #50c878);
+  border-radius: 20rpx;
+  color: white;
+  box-shadow: 0 4rpx 12rpx rgba(74, 144, 226, 0.3);
+}
+
+.title {
+  font-size: 44rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.subtitle {
+  font-size: 32rpx;
+  opacity: 0.95;
+}
+
+/* 周视图 - 优化横向滚动 */
+.week-scroll {
+  width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin-bottom: 30rpx;
+  padding-bottom: 10rpx;
+}
+
+/* 周视图样式修改 */
+.week-tabs {
+  display: flex;
+  background: white;
+  border-radius: 15rpx;
+  padding: 15rpx 0;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+  overflow-x: auto;  /* 添加横向滚动 */
+}
+
+.tab {
+  flex: 0 0 auto;  /* 改为不自动伸缩 */
+  width: 90rpx;     /* 固定宽度 */
+  text-align: center;
+  padding: 15rpx 5rpx;
+}
+
+.tab-day {
+  display: block;
+  font-size: 24rpx;  /* 减小字体 */
+  margin-bottom: 6rpx;
+}
+
+.tab-date {
+  display: block;
+  font-size: 20rpx;  /* 减小字体 */
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.tab-course {
+  display: block;
+  font-size: 18rpx;  /* 减小字体 */
+  color: #ff6b6b;
+  height: 24rpx;
+  overflow: hidden;
+}
+
+/* 课程列表 */
+.course-list {
+  background: white;
+  border-radius: 15rpx;
+  padding: 25rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.course-item {
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.course-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.time {
+  font-size: 26rpx;
+  color: #4a90e2;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.location {
+  font-size: 26rpx;
+  color: #666;
+  display: block;
+}
+
+/* 快捷入口样式 - 修改这部分 */
+.quick-actions {
+  display: flex;
+  justify-content: space-between;
+  background: white;
+  border-radius: 15rpx;
+  padding: 25rpx 15rpx;  /* 减少左右padding */
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.action {
+  flex: 1;
+  text-align: center;
+  padding: 0 8rpx;  /* 减少padding */
+  min-width: 0;
+}
+
+.icon {
+  font-size: 40rpx;  /* 减小图标 */
+  display: block;
+  margin-bottom: 10rpx;
+  height: 40rpx;
+}
+
+.text {
+  font-size: 22rpx;  /* 减小字体 */
+  color: #333;
+  display: block;
+  white-space: nowrap;
+  overflow: visible;  /* 改为visible，不隐藏 */
+  text-overflow: clip;
+}
+/* 新增样式 */
+.no-course {
+  text-align: center;
+  padding: 60rpx 0;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.course-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25rpx;
+  margin-bottom: 20rpx;
+  background: white;
+  border-radius: 12rpx;
+  border-left: 6rpx solid #4a90e2;
+}
+
+.course-info {
+  flex: 1;
+}
+
+.course-actions {
+  margin-left: 20rpx;
+}
+
+.delete-btn {
+  color: #ff6b6b;
+  font-size: 24rpx;
+  padding: 10rpx 20rpx;
+  background: #fff0f0;
+  border-radius: 20rpx;
+}
+
+.add-course-btn {
+  margin: 30rpx 0;
+  padding: 25rpx;
+  background: #4a90e2;
+  color: white;
+  text-align: center;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: bold;
+}
+
+/* 弹窗样式 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 80%;
+  max-width: 600rpx;
+  background: white;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  background: #4a90e2;
+  color: white;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.close-btn {
+  font-size: 40rpx;
+  line-height: 1;
+}
+
+.form {
+  padding: 30rpx;
+}
+
+.form-item {
+  margin-bottom: 30rpx;
+}
+
+.label {
+  display: block;
+  margin-bottom: 10rpx;
+  color: #333;
+  font-size: 26rpx;
+}
+
+input, .picker {
+  width: 100%;
+  padding: 20rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 10rpx;
+  font-size: 26rpx;
+}
+
+.submit-btn {
+  background: #4a90e2;
+  color: white;
+  margin-top: 20rpx;
+  width: 100%;
+}

@@ -1,0 +1,383 @@
+profile.js
+Page({
+  data: {
+    courseCount: 0,
+    taskCount: 0,
+    completedTaskCount: 0,
+    nickName: '华南理工大学学生', // 新增：昵称数据
+    userInfo: '信息工程专业·大二' // 新增：用户信息
+  },
+
+  onShow() {
+    // 加载统计数据
+    this.loadStats();
+    // 加载用户信息
+    this.loadUserInfo();
+  },
+
+  // 加载用户信息
+  loadUserInfo() {
+    const nickName = wx.getStorageSync('nickName');
+    const userInfo = wx.getStorageSync('userInfo');
+    
+    if (nickName) {
+      this.setData({
+        nickName: nickName
+      });
+    }
+    
+    if (userInfo) {
+      this.setData({
+        userInfo: userInfo
+      });
+    }
+  },
+
+  // 加载统计数据
+  loadStats() {
+    const courses = wx.getStorageSync('courses');
+    const tasks = wx.getStorageSync('tasks') || [];
+    
+    // 计算课程总数
+    let totalCourses = 0;
+    if (courses) {
+      for (let day in courses) {
+        totalCourses += courses[day] ? courses[day].length : 0;
+      }
+    }
+    
+    // 计算任务统计
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => task.completed).length;
+    
+    this.setData({
+      courseCount: totalCourses,
+      taskCount: totalTasks,
+      completedTaskCount: completedTasks
+    });
+  },
+
+  // 编辑昵称
+  editNickName() {
+    wx.showModal({
+      title: '修改昵称',
+      content: '请输入新的昵称',
+      editable: true,
+      placeholderText: '请输入昵称',
+      success: (res) => {
+        if (res.confirm && res.content) {
+          // 保存到本地存储
+          wx.setStorageSync('nickName', res.content);
+          
+          // 更新页面显示
+          this.setData({
+            nickName: res.content
+          });
+          
+          wx.showToast({
+            title: '昵称修改成功',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  // 编辑用户信息
+  editUserInfo() {
+    wx.showModal({
+      title: '修改信息',
+      content: '请输入专业和年级信息',
+      editable: true,
+      placeholderText: '例如：信息工程专业·大二',
+      success: (res) => {
+        if (res.confirm && res.content) {
+          // 保存到本地存储
+          wx.setStorageSync('userInfo', res.content);
+          
+          // 更新页面显示
+          this.setData({
+            userInfo: res.content
+          });
+          
+          wx.showToast({
+            title: '信息修改成功',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  // 点击用户卡片（同时修改昵称和信息）
+  onTapUserCard() {
+    wx.showActionSheet({
+      itemList: ['修改昵称', '修改专业信息', '取消'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this.editNickName();
+        } else if (res.tapIndex === 1) {
+          this.editUserInfo();
+        }
+      }
+    });
+  },
+
+  // 跳转到首页
+  goToIndex() {
+    wx.switchTab({
+      url: '/pages/index/index'
+    });
+  },
+
+  // 跳转到任务页
+  goToTask() {
+    wx.switchTab({
+      url: '/pages/task/task'
+    });
+  },
+
+  // 清空所有数据
+  clearAllData() {
+    wx.showModal({
+      title: '清空数据',
+      content: '确定要清空所有课程和任务数据吗？此操作不可恢复！',
+      success: (res) => {
+        if (res.confirm) {
+          // 清空本地存储
+          wx.removeStorageSync('courses');
+          wx.removeStorageSync('tasks');
+          
+          // 更新统计数据
+          this.loadStats();
+          
+          wx.showToast({
+            title: '数据已清空',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  }
+});
+
+
+
+
+profile.json
+{
+  "usingComponents": {}
+}
+
+
+
+
+
+
+
+profile.wxml
+<!-- 我的页面 -->
+<view class="profile-container">
+  <!-- 用户卡片 -->
+  <view class="user-card" bindtap="onTapUserCard">
+    <view class="user-avatar">
+      {{nickName ? nickName.charAt(0) : '用'}}
+    </view>
+    <view class="user-info">
+      <text class="user-name">{{nickName}}</text>
+      <text class="user-id">{{userInfo}}</text>
+    </view>
+  </view>
+
+  <!-- 菜单列表 -->
+  <view class="menu-list">
+    <view class="menu-item" bindtap="goToTask">
+      <view class="menu-icon">📋</view>
+      <text class="menu-text">我的任务</text>
+      <view class="menu-arrow">›</view>
+    </view>
+    <view class="menu-item" bindtap="clearAllData">
+      <view class="menu-icon">🗑️</view>
+      <text class="menu-text">清空所有数据</text>
+      <view class="menu-arrow">›</view>
+    </view>
+  </view>
+
+  <!-- 学习统计 -->
+  <view class="dev-team">
+    <text class="team-title">学习统计</text>
+    <text class="team-members">{{courseCount}}总课程数</text>
+    <text class="team-members">{{taskCount}}总任务数</text>
+    <text class="team-members">{{completedTaskCount}}完成任务</text>
+  </view>
+
+  <!-- 开发团队信息 -->
+  <view class="dev-team">
+    <text class="team-title">课程通 v1.0</text>
+    <text class="team-project">华南理工大学·信息工程专业</text>
+    <text class="team-members">软件工程课程项目</text>
+    <text class="team-version">小组四人项目</text>
+  </view>
+
+  <!-- 底部导航提示 -->
+  <view class="dev-team" style="margin-bottom: 100rpx;">
+    <text class="team-members">点击上方用户卡片可以修改昵称</text>
+  </view>
+</view>
+
+
+
+
+
+
+
+profile.wxss
+/* 我的页面样式 */
+.profile-container {
+  padding: 20rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 用户卡片 */
+.user-card {
+  background: linear-gradient(135deg, #4a90e2, #50c878);
+  border-radius: 20rpx;
+  padding: 40rpx 30rpx;
+  color: white;
+  display: flex;
+  align-items: center;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 15rpx rgba(74, 144, 226, 0.3);
+}
+
+.user-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: bold;
+  margin-right: 25rpx;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 36rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.user-id {
+  font-size: 26rpx;
+  opacity: 0.9;
+  display: block;
+}
+
+/* 菜单列表 */
+.menu-list {
+  background: white;
+  border-radius: 15rpx;
+  margin-bottom: 30rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-icon {
+  font-size: 36rpx;
+  margin-right: 25rpx;
+  width: 40rpx;
+  text-align: center;
+}
+
+.menu-text {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-arrow {
+  font-size: 36rpx;
+  color: #ccc;
+}
+
+/* 开发团队信息 */
+.dev-team {
+  background: white;
+  border-radius: 15rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  text-align: center;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+}
+
+.team-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 15rpx;
+}
+
+.team-members {
+  font-size: 26rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.team-project {
+  font-size: 24rpx;
+  color: #4a90e2;
+  display: block;
+  margin-bottom: 10rpx;
+}
+
+.team-version {
+  font-size: 22rpx;
+  color: #999;
+  display: block;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  gap: 20rpx;
+}
+
+.action-btn {
+  flex: 1;
+  text-align: center;
+  padding: 25rpx 0;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.action-btn.logout {
+  background: #ff6b6b;
+  color: white;
+}
+
+.action-btn.feedback {
+  background: #f0f0f0;
+  color: #666;
+}
